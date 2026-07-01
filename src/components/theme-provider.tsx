@@ -26,14 +26,20 @@ function applyTheme(theme: Theme) {
   root.classList.add(theme);
 }
 
+function getSystemTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
 
-  // Load the saved theme after hydration so server and client render match.
+  // Load the saved theme after hydration. If the user has not set one,
+  // default to the system color scheme so server and client render match.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const stored = typeof window !== "undefined" ? (window.localStorage.getItem(STORAGE_KEY) as Theme | null) : null;
-    const initial = stored ?? "light";
+    const initial = stored && (stored === "light" || stored === "dark") ? stored : getSystemTheme();
     setThemeState(initial);
     applyTheme(initial);
   }, []);
