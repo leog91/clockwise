@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { RoutinesProvider } from "@/features/planner/hooks/use-routines";
 import { Header } from "@/components/header";
+import { ShareImporter } from "@/components/share-importer";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -38,6 +40,9 @@ export default function RootLayout({
         <ThemeProvider>
           <RoutinesProvider>
             <Header />
+            <Suspense>
+              <ShareImporter />
+            </Suspense>
             {children}
           </RoutinesProvider>
         </ThemeProvider>

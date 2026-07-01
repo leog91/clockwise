@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  Check,
   ChevronDown,
   ChevronUp,
   Clock,
   Copy,
   GripVertical,
+  Link2,
   Route,
+  Trash2,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
@@ -17,11 +20,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useRoutines } from "../hooks/use-routines";
 import { calculateSchedule } from "../scheduler";
+import { encodeRoutines } from "../lib/share";
 import { getActivityColorClasses } from "../lib/colors";
 import { formatDuration, formatTime } from "../lib/time";
 
 export function RoutineList() {
-  const { routines, duplicateRoutine, reorderRoutines } = useRoutines();
+  const { activeRoutines: routines, duplicateRoutine, reorderActiveRoutines, deleteRoutine } = useRoutines();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -30,7 +34,7 @@ export function RoutineList() {
     const fromIndex = routines.findIndex((r) => r.id === draggedId);
     const toIndex = routines.findIndex((r) => r.id === targetId);
     if (fromIndex === -1 || toIndex === -1) return;
-    reorderRoutines(fromIndex, toIndex);
+    reorderActiveRoutines(fromIndex, toIndex);
   };
 
   const handlePointerDown = (e: React.PointerEvent, id: string) => {
@@ -76,9 +80,12 @@ export function RoutineList() {
             Plans that work backwards from when you need to arrive.
           </p>
         </div>
-        <Link href="/routine/new" className={buttonVariants()}>
-          New routine
-        </Link>
+        <div className="flex items-center gap-2">
+          <ShareAllButton routines={routines} />
+          <Link href="/routine/new" className={buttonVariants()}>
+            New routine
+          </Link>
+        </div>
       </div>
 
       {routines.length === 0 ? (
@@ -131,7 +138,22 @@ export function RoutineList() {
                     onClick={() => toggleExpanded(routine.id)}
                     className="flex-1 min-w-0 text-left"
                   >
-                    <h2 className="truncate font-medium">{routine.name}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate font-medium">{routine.name}</h2>
+                      {routine.source === "shared" && (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          Shared
+                        </span>
+                      )}
+                      {routine.flags?.map((flag) => (
+                        <span
+                          key={flag}
+                          className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive"
+                        >
+                          {flag === "duplicate-name" ? "Duplicate name" : flag}
+                        </span>
+                      ))}
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="size-3.5" />
@@ -172,7 +194,7 @@ export function RoutineList() {
                       size="icon"
                       className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-30"
                       disabled={index === 0}
-                      onClick={() => reorderRoutines(index, index - 1)}
+                      onClick={() => reorderActiveRoutines(index, index - 1)}
                       aria-label="Move up"
                       title="Move up"
                     >
@@ -183,7 +205,7 @@ export function RoutineList() {
                       size="icon"
                       className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-30"
                       disabled={index === routines.length - 1}
-                      onClick={() => reorderRoutines(index, index + 1)}
+                      onClick={() => reorderActiveRoutines(index, index + 1)}
                       aria-label="Move down"
                       title="Move down"
                     >
@@ -201,6 +223,16 @@ export function RoutineList() {
                       title="Duplicate routine"
                     >
                       <Copy className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteRoutine(routine.id)}
+                      aria-label="Delete routine"
+                      title="Delete routine"
+                    >
+                      <Trash2 className="size-4" />
                     </Button>
                     <Link
                       href={`/routine/${routine.id}`}
@@ -259,5 +291,40 @@ export function RoutineList() {
         </div>
       )}
     </div>
+  );
+}
+
+function ShareAllButton({ routines }: { routines: ReturnType<typeof useRoutines>["routines"] }) {
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/?state=${encodeRoutines(routines)}`;
+  }, [routines]);
+
+  const urlTooLong = shareUrl.length > 4096;
+
+  const handleCopy = async () => {
+    if (urlTooLong) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore copy failures.
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleCopy}
+      disabled={urlTooLong || routines.length === 0}
+      title={urlTooLong ? "Link is too long to share reliably" : "Copy link to all routines"}
+    >
+      {copied ? <Check className="mr-1 size-4" /> : <Link2 className="mr-1 size-4" />}
+      {copied ? "Copied link" : "Share all"}
+    </Button>
   );
 }

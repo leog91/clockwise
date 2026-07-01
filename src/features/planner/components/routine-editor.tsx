@@ -31,11 +31,15 @@ function createEmptyActivity(): Activity {
 }
 
 function createEmptyRoutine(): Routine {
+  const now = new Date().toISOString();
   return {
     id: generateId(),
     name: "",
     target: { name: "Arrive", timeMinutes: 540 },
     activities: [],
+    createdAt: now,
+    updatedAt: now,
+    source: "created",
   };
 }
 

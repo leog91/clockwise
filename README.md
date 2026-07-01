@@ -11,8 +11,12 @@ It works backwards from a fixed target arrival time. Add your activities in the 
 - Live backwards schedule calculation
 - Timeline view with start/finish times and durations
 - Current-time indicator on each routine view
-- Copy schedule as plain text
-- Dark mode
+- Copy schedule as plain text or share via URL
+- Soft-delete with trash and restore
+- Expandable routine cards on the home page
+- Preset activities for quick planning
+- Keyboard shortcuts in the routine editor
+- System color mode by default, with manual light/dark toggle
 - LocalStorage persistence
 - Responsive design
 
@@ -56,11 +60,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```
 src/
   app/                  # Next.js routes
-  components/           # Shared shell components (header, theme provider)
+  components/           # Shared shell components (header, theme provider, share importer)
   features/planner/     # Core domain
-    components/         # RoutineList, RoutineEditor, RoutineView, Timeline, etc.
+    components/         # RoutineList, RoutineEditor, RoutineView, Timeline, TrashList, etc.
     hooks/              # useRoutines provider
-    lib/                # time, colors, presets, routine helpers
+    lib/                # time, colors, presets, share, routine helpers
     scheduler.ts        # Pure backwards-scheduling algorithm
     scheduler.test.ts   # Vitest tests
     types.ts            # TypeScript types
@@ -68,6 +72,10 @@ src/
 ```
 
 The scheduling algorithm is plain TypeScript and kept separate from React so it is easy to test.
+
+## Sharing
+
+Single routines or your whole active list can be shared as a URL. The receiver's app automatically imports the routines when the link is opened. Routines already stored by ID are skipped; routines with a matching name are imported with a `duplicate-name` flag.
 
 ## License
 

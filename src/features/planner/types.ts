@@ -36,6 +36,16 @@ export interface Routine {
   name: string;
   target: TargetEvent;
   activities: Activity[];
+  /** ISO 8601 timestamp of when the routine was created. */
+  createdAt?: string;
+  /** ISO 8601 timestamp of the last update. */
+  updatedAt?: string;
+  /** Where the routine came from. */
+  source?: "created" | "shared";
+  /** Optional flags, e.g. ["duplicate-name"] when imported with a matching name. */
+  flags?: string[];
+  /** ISO 8601 timestamp when the routine was soft-deleted. */
+  deletedAt?: string;
 }
 
 export interface ScheduledActivity extends Activity {

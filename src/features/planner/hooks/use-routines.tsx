@@ -1,19 +1,28 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { duplicateRoutine as makeDuplicate } from "../lib/routine";
 import type { Routine } from "../types";
 
 const STORAGE_KEY = "clockwise-routines-v1";
 
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
 interface RoutinesContextValue {
   routines: Routine[];
+  activeRoutines: Routine[];
+  deletedRoutines: Routine[];
   isLoaded: boolean;
   addRoutine: (routine: Routine) => void;
   updateRoutine: (routine: Routine) => void;
   deleteRoutine: (id: string) => void;
+  restoreRoutine: (id: string) => void;
+  permanentlyDeleteRoutine: (id: string) => void;
   duplicateRoutine: (id: string) => void;
-  reorderRoutines: (fromIndex: number, toIndex: number) => void;
+  reorderActiveRoutines: (fromActiveIndex: number, toActiveIndex: number) => void;
+  importRoutines: (routines: Routine[]) => void;
   getRoutine: (id: string) => Routine | undefined;
 }
 
@@ -41,6 +50,15 @@ export function RoutinesProvider({ children }: { children: React.ReactNode }) {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  const activeRoutines = useMemo(
+    () => routines.filter((r) => !r.deletedAt),
+    [routines]
+  );
+  const deletedRoutines = useMemo(
+    () => routines.filter((r) => r.deletedAt),
+    [routines]
+  );
+
   // Load persisted routines once the component mounts on the client.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -59,10 +77,23 @@ export function RoutinesProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateRoutine = useCallback((routine: Routine) => {
-    setRoutines((prev) => prev.map((r) => (r.id === routine.id ? routine : r)));
+    const withTimestamp = { ...routine, updatedAt: nowIso() };
+    setRoutines((prev) => prev.map((r) => (r.id === withTimestamp.id ? withTimestamp : r)));
   }, []);
 
   const deleteRoutine = useCallback((id: string) => {
+    setRoutines((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, deletedAt: nowIso() } : r))
+    );
+  }, []);
+
+  const restoreRoutine = useCallback((id: string) => {
+    setRoutines((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, deletedAt: undefined } : r))
+    );
+  }, []);
+
+  const permanentlyDeleteRoutine = useCallback((id: string) => {
     setRoutines((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
@@ -75,13 +106,48 @@ export function RoutinesProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const reorderRoutines = useCallback((fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
+  const reorderActiveRoutines = useCallback((fromActiveIndex: number, toActiveIndex: number) => {
+    if (fromActiveIndex === toActiveIndex) return;
     setRoutines((prev) => {
+      const activeIndices = prev
+        .map((r, i) => (!r.deletedAt ? i : -1))
+        .filter((i) => i !== -1);
+      const fromFull = activeIndices[fromActiveIndex];
+      const toFull = activeIndices[toActiveIndex];
+      if (fromFull === undefined || toFull === undefined) return prev;
+
       const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
+      const [moved] = next.splice(fromFull, 1);
+      next.splice(toFull, 0, moved);
       return next;
+    });
+  }, []);
+
+  const importRoutines = useCallback((incoming: Routine[]) => {
+    setRoutines((prev) => {
+      const existingIds = new Set(prev.map((r) => r.id));
+      const existingNames = new Set(prev.map((r) => r.name));
+      const toAdd: Routine[] = [];
+
+      for (const routine of incoming) {
+        if (existingIds.has(routine.id)) continue;
+
+        const flags = routine.flags ? [...routine.flags] : [];
+        if (existingNames.has(routine.name)) {
+          flags.push("duplicate-name");
+        }
+
+        toAdd.push({
+          ...routine,
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+          source: "shared",
+          flags: flags.length > 0 ? flags : undefined,
+          deletedAt: undefined,
+        });
+      }
+
+      return [...prev, ...toAdd];
     });
   }, []);
 
@@ -94,12 +160,17 @@ export function RoutinesProvider({ children }: { children: React.ReactNode }) {
     <RoutinesContext.Provider
       value={{
         routines,
+        activeRoutines,
+        deletedRoutines,
         isLoaded,
         addRoutine,
         updateRoutine,
         deleteRoutine,
+        restoreRoutine,
+        permanentlyDeleteRoutine,
         duplicateRoutine,
-        reorderRoutines,
+        reorderActiveRoutines,
+        importRoutines,
         getRoutine,
       }}
     >
