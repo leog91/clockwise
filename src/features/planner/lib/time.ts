@@ -3,7 +3,7 @@ import type { TimeOfDay } from "../types";
 const MINUTES_PER_DAY = 1440;
 
 /**
- * Formets a minute value as a 24-hour "HH:mm" string.
+ * Formats a minute value as a 24-hour "HH:mm" string.
  * Values outside the 0-1439 range are normalized to a time of day,
  * which is useful when a schedule crosses midnight.
  */

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { duplicateRoutine as makeDuplicate } from "../lib/routine";
+import { isRoutineArray } from "../lib/validation";
 import type { Routine } from "../types";
 
 const STORAGE_KEY = "clockwise-routines-v1";
@@ -34,7 +35,7 @@ function loadRoutines(): Routine[] {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) return parsed as Routine[];
+    if (isRoutineArray(parsed)) return parsed;
   } catch {
     // Ignore corrupt storage.
   }

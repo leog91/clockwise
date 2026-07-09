@@ -1,4 +1,5 @@
 import type { Routine } from "../types";
+import { isRoutineArray } from "./validation";
 
 const SHARE_VERSION = 1;
 
@@ -7,27 +8,12 @@ interface SharePayload {
   routines: Routine[];
 }
 
-function isRoutine(value: unknown): value is Routine {
-  if (typeof value !== "object" || value === null) return false;
-  const r = value as Record<string, unknown>;
-  return (
-    typeof r.id === "string" &&
-    typeof r.name === "string" &&
-    typeof r.target === "object" &&
-    r.target !== null &&
-    typeof (r.target as Record<string, unknown>).name === "string" &&
-    typeof (r.target as Record<string, unknown>).timeMinutes === "number" &&
-    Array.isArray(r.activities)
-  );
-}
-
 function isSharePayload(value: unknown): value is SharePayload {
   if (typeof value !== "object" || value === null) return false;
   const p = value as Record<string, unknown>;
   return (
     p.v === SHARE_VERSION &&
-    Array.isArray(p.routines) &&
-    p.routines.every(isRoutine)
+    isRoutineArray(p.routines)
   );
 }
 
